@@ -16,15 +16,17 @@ export const getLocationIdentifier = (item, level) => {
 
 // Calculate cosine similarity between two items based on demographic percentage features
 export const calculateCosineSimilarity = (itemA, itemB) => {
-  // Use demographics_pct sub-object if available, else fall back to root
-  const pctA = itemA.demographics_pct || itemA;
-  const pctB = itemB.demographics_pct || itemB;
-  // Select numeric percentage features
-  const features = Object.keys(pctA)
-    .filter(key => typeof pctA[key] === 'number' && typeof pctB[key] === 'number')
-    .sort();
-  const vectorA = features.map(f => itemA[f] || 0);
-  const vectorB = features.map(f => itemB[f] || 0);
+  // Extract percentage features from demographics_pct
+  const pctA = itemA.demographics_pct || {};
+  const pctB = itemB.demographics_pct || {};
+  // Fixed feature list matching backend demographics_pct keys
+  const features = [
+    'male_18_24', 'male_25_34', 'male_35_44', 'male_45_64', 'male_65_plus',
+    'female_18_24', 'female_25_34', 'female_35_44', 'female_45_64', 'female_65_plus'
+  ];
+  // Map percentage values from demographics_pct
+  const vectorA = features.map(f => pctA[f] || 0);
+  const vectorB = features.map(f => pctB[f] || 0);
   let dot = 0, magA = 0, magB = 0;
 
   for (let i = 0; i < vectorA.length; i++) {
