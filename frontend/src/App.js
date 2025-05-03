@@ -21,6 +21,16 @@ import { Container, Navbar, Nav, Alert, Button, Row, Col, Card, Form, Table } fr
 import './App.css';
 import { getLocationIdentifier, calculateCosineSimilarity, findTopSimilarLocations } from './utils/similarity';
 
+// Debounce hook to throttle rapid input changes
+function useDebounce(value, delay) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debounced;
+}
+
 // Register ChartJS components
 ChartJS.register(
   CategoryScale,
@@ -60,10 +70,11 @@ function App() {
   // State for filtering and sorting the clustered data table
   const [clusterTableFilter, setClusterTableFilter] = useState('');
   const [clusterTableSortConfig, setClusterTableSortConfig] = useState({ key: null, direction: 'ascending' });
+  // Debounced cluster table filter to reduce recalculations during typing
+  const debouncedClusterTableFilter = useDebounce(clusterTableFilter, 300);
 
   // State for similarity feature
   const [selectedLocationForSimilarity, setSelectedLocationForSimilarity] = useState('');
-  const [similarLocations, setSimilarLocations] = useState([]);
 
   // Base URL for API
   const API_BASE_URL = 'http://localhost:5000';
@@ -148,19 +159,17 @@ function App() {
     return () => clearInterval(interval);
   }, [fetchData]);
   
-  // Update similarity list when selection or data changes
-  useEffect(() => {
-    const sims = findTopSimilarLocations(
-      selectedLocationForSimilarity,
+  // Debounced similarity input
+  const debouncedSimilarity = useDebounce(selectedLocationForSimilarity, 300);
+  // Compute similar locations memoized
+  const similarLocations = useMemo(
+    () => findTopSimilarLocations(
+      debouncedSimilarity,
       clusteringData.clustered_data,
       clusterLevel
-    );
-    setSimilarLocations(sims);
-  }, [
-    selectedLocationForSimilarity,
-    clusteringData.clustered_data,
-    clusterLevel,
-  ]);
+    ),
+    [debouncedSimilarity, clusteringData.clustered_data, clusterLevel]
+  );
   
   // Prepare unique locations for the similarity dropdown
   const uniqueLocationsForDropdown = useMemo(() => {
