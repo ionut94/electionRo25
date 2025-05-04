@@ -200,6 +200,7 @@ def get_county_results(county):
     except Exception as e:
         logger.error(f"Error in get_county_results: {e}")
         return jsonify({"error": str(e)}), 500
+    return jsonify(corr)
 
 @app.route('/demographic', methods=['GET'])
 def get_demographic():
@@ -233,7 +234,7 @@ def get_demographic():
             'rural_stations': int(df['rural_stations'].sum()),
         }
         
-        # Add urban/rural data if available
+        # Define urban/rural columns we need
         urban_rural_columns = ['urban_votes', 'rural_votes',
                                'urban_male_voters', 'urban_female_voters',
                                'rural_male_voters', 'rural_female_voters',
@@ -242,12 +243,33 @@ def get_demographic():
                                'rural_age_18_24', 'rural_age_25_34', 'rural_age_35_44', 
                                'rural_age_45_64', 'rural_age_65_plus']
         
+        # Check if urban/rural data already exists in the CSV
         has_urban_rural_data = all(col in df.columns for col in urban_rural_columns)
         
-        if has_urban_rural_data:
-            # Convert numpy types to native Python types
-            urban_rural_totals = {col: int(df[col].sum()) for col in urban_rural_columns}
-            national_totals.update(urban_rural_totals)
+        # If data doesn't exist, we'll estimate it based on station counts
+        if not has_urban_rural_data:
+            # Calculate estimated urban/rural votes based on station counts
+            total_stations = df['urban_stations'] + df['rural_stations']
+            df['urban_votes'] = (df['votes_cast'] * df['urban_stations'] / total_stations).round().fillna(0).astype(int)
+            df['rural_votes'] = (df['votes_cast'] * df['rural_stations'] / total_stations).round().fillna(0).astype(int)
+            
+            # Calculate estimated urban/rural gender data
+            df['urban_male_voters'] = (df['male_voters'] * df['urban_votes'] / df['votes_cast']).round().fillna(0).astype(int)
+            df['urban_female_voters'] = (df['female_voters'] * df['urban_votes'] / df['votes_cast']).round().fillna(0).astype(int)
+            df['rural_male_voters'] = (df['male_voters'] * df['rural_votes'] / df['votes_cast']).round().fillna(0).astype(int)
+            df['rural_female_voters'] = (df['female_voters'] * df['rural_votes'] / df['votes_cast']).round().fillna(0).astype(int)
+            
+            # Calculate estimated urban/rural age data
+            for age_group in ['age_18_24', 'age_25_34', 'age_35_44', 'age_45_64', 'age_65_plus']:
+                df[f'urban_{age_group}'] = (df[age_group] * df['urban_votes'] / df['votes_cast']).round().fillna(0).astype(int)
+                df[f'rural_{age_group}'] = (df[age_group] * df['rural_votes'] / df['votes_cast']).round().fillna(0).astype(int)
+            
+            # Now we have the urban/rural data available
+            has_urban_rural_data = True
+        
+        # Calculate national totals
+        urban_rural_totals = {col: int(df[col].sum()) for col in urban_rural_columns}
+        national_totals.update(urban_rural_totals)
         
         # Calculate percentages
         total_votes = national_totals['total_votes']
@@ -311,7 +333,7 @@ def get_demographic():
                 'rural_stations': int(row['rural_stations'])
             }
             
-            # Add county level urban/rural data if available
+            # Add county level urban/rural data
             if has_urban_rural_data:
                 urban_rural_data = {col: int(row[col]) for col in urban_rural_columns}
                 county_data.update(urban_rural_data)
@@ -450,32 +472,20 @@ def get_original_presence():
 @app.route('/clustering', methods=['GET'])
 def get_clustering():
     try:
-        # Load data from the Cluster directory
+        # Use presence_now.csv from the Cluster directory
         cluster_dir = os.path.join(DATA_DIR, 'Cluster')
         if not os.path.exists(cluster_dir):
             return jsonify({"error": "Cluster data directory not found"}), 404
         
-        # Find the most recent presence file
-        presence_files = [f for f in os.listdir(cluster_dir) if f.startswith('presence_') and f.endswith('.csv')]
-        if not presence_files:
-            # Try to use the most recent presence file from the main data directory
-            presence_files = [f for f in os.listdir(DATA_DIR) if f.startswith('presence_') and f.endswith('.csv')]
-            if not presence_files:
-                return jsonify({"error": "No presence data files found"}), 404
-            # Sort by date in filename (assuming format: presence_YYYY-MM-DD_HH-MM.csv)
-            presence_files.sort(reverse=True)
-            most_recent_file = presence_files[0]
-            presence_file_path = os.path.join(DATA_DIR, most_recent_file)
-        else:
-            # Sort by date in filename (assuming format: presence_YYYY-MM-DD_HH-MM.csv)
-            presence_files.sort(reverse=True)
-            most_recent_file = presence_files[0]
-            presence_file_path = os.path.join(cluster_dir, most_recent_file)
+        # Use specifically presence_now.csv file
+        presence_file_path = os.path.join(cluster_dir, 'presence_now.csv')
+        if not os.path.exists(presence_file_path):
+            return jsonify({"error": "presence_now.csv file not found in Cluster directory"}), 404
         
         logger.info(f"Using presence file for clustering: {presence_file_path}")
         
-        # Read presence data
-        df = pd.read_csv(presence_file_path)
+        # Read presence data (with comment handling for any file header comments)
+        df = pd.read_csv(presence_file_path, comment='//', engine='python')
         
         # Demographic columns to use for clustering
         demographic_columns = [

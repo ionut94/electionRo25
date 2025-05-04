@@ -975,43 +975,328 @@ function App() {
                   <Col md={12}>
                     <Card className="mb-4">
                       <Card.Body>
-                        <h4>Cluster Characteristics</h4>
-                        <div className="table-responsive">
-                          <table className="table table-striped">
-                            <thead>
-                              <tr>
-                                <th>Cluster</th>
-                                <th>Male 18-24</th>
-                                <th>Male 25-34</th>
-                                <th>Male 35-44</th>
-                                <th>Male 45-64</th>
-                                <th>Male 65+</th>
-                                <th>Female 18-24</th>
-                                <th>Female 25-34</th>
-                                <th>Female 35-44</th>
-                                <th>Female 45-64</th>
-                                <th>Female 65+</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {Object.entries(clusteringData.cluster_centers || {}).map(([cluster, center]) => (
-                                <tr key={cluster}>
-                                  <td>Cluster {parseInt(cluster) + 1}</td>
-                                  <td>{center.male_18_24_pct?.toFixed(2)}%</td>
-                                  <td>{center.male_25_34_pct?.toFixed(2)}%</td>
-                                  <td>{center.male_35_44_pct?.toFixed(2)}%</td>
-                                  <td>{center.male_45_64_pct?.toFixed(2)}%</td>
-                                  <td>{center.male_65_plus_pct?.toFixed(2)}%</td>
-                                  <td>{center.female_18_24_pct?.toFixed(2)}%</td>
-                                  <td>{center.female_25_34_pct?.toFixed(2)}%</td>
-                                  <td>{center.female_35_44_pct?.toFixed(2)}%</td>
-                                  <td>{center.female_45_64_pct?.toFixed(2)}%</td>
-                                  <td>{center.female_65_plus_pct?.toFixed(2)}%</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
+                        <h4>Cluster Characteristics Histograms</h4>
+                        <p className="text-muted mb-4">
+                          Each chart shows the demographic composition of a cluster by age groups and gender.
+                          Higher percentages indicate that the demographic group is more prominent in that cluster.
+                        </p>
+                        <Row>
+                          {Object.entries(clusteringData.cluster_centers || {}).map(([cluster, center]) => {
+                            // Prepare data for the histogram
+                            const clusterHistogramData = {
+                              labels: ['18-24', '25-34', '35-44', '45-64', '65+'],
+                              datasets: [
+                                {
+                                  label: 'Male',
+                                  data: [
+                                    center.male_18_24_pct || 0,
+                                    center.male_25_34_pct || 0,
+                                    center.male_35_44_pct || 0,
+                                    center.male_45_64_pct || 0,
+                                    center.male_65_plus_pct || 0
+                                  ],
+                                  backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                                  borderColor: 'rgba(54, 162, 235, 1)',
+                                  borderWidth: 1
+                                },
+                                {
+                                  label: 'Female',
+                                  data: [
+                                    center.female_18_24_pct || 0,
+                                    center.female_25_34_pct || 0,
+                                    center.female_35_44_pct || 0,
+                                    center.female_45_64_pct || 0,
+                                    center.female_65_plus_pct || 0
+                                  ],
+                                  backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                                  borderColor: 'rgba(255, 99, 132, 1)',
+                                  borderWidth: 1
+                                }
+                              ]
+                            };
+
+                            // Options for the histogram
+                            const clusterHistogramOptions = {
+                              responsive: true,
+                              maintainAspectRatio: false,
+                              scales: {
+                                y: {
+                                  beginAtZero: true,
+                                  title: {
+                                    display: true,
+                                    text: 'Percentage (%)'
+                                  },
+                                  // Set a reasonable max to avoid excessive empty space
+                                  // and to make comparison between clusters easier
+                                  suggestedMax: 15
+                                }
+                              },
+                              plugins: {
+                                title: {
+                                  display: true,
+                                  text: `Cluster ${parseInt(cluster) + 1} Demographics`,
+                                  font: {
+                                    size: 16
+                                  }
+                                },
+                                tooltip: {
+                                  callbacks: {
+                                    label: function(context) {
+                                      return `${context.dataset.label}: ${context.raw.toFixed(2)}%`;
+                                    }
+                                  }
+                                }
+                              }
+                            };
+
+                            return (
+                              <Col md={6} lg={4} key={cluster} className="mb-4">
+                                <Card style={{ backgroundColor: `${clusterColors[parseInt(cluster)]}20` }}>
+                                  <Card.Body>
+                                    <div style={{ height: '300px' }}>
+                                      <Bar 
+                                        data={clusterHistogramData} 
+                                        options={clusterHistogramOptions}
+                                      />
+                                    </div>
+                                  </Card.Body>
+                                </Card>
+                              </Col>
+                            );
+                          })}
+                        </Row>
+                      </Card.Body>
+                    </Card>
+                  </Col>
+                  
+                  <Col md={12}>
+                    <Card className="mb-4">
+                      <Card.Body>
+                        <h4>Cluster Characteristics By Age Groups</h4>
+                        <Row>
+                          <Col lg={6} className="mb-4">
+                            <h5 className="text-center">Age Distribution By Cluster</h5>
+                            <div style={{ height: '400px' }}>
+                              <Bar
+                                data={{
+                                  labels: Array.from({ length: Object.keys(clusteringData.cluster_centers || {}).length }, 
+                                         (_, i) => `Cluster ${i + 1}`),
+                                  datasets: [
+                                    {
+                                      label: '18-24',
+                                      data: Object.values(clusteringData.cluster_centers || {}).map(center => {
+                                        // Calculate total for normalization
+                                        const total = (
+                                          (center.male_18_24_pct || 0) + (center.female_18_24_pct || 0) +
+                                          (center.male_25_34_pct || 0) + (center.female_25_34_pct || 0) +
+                                          (center.male_35_44_pct || 0) + (center.female_35_44_pct || 0) +
+                                          (center.male_45_64_pct || 0) + (center.female_45_64_pct || 0) +
+                                          (center.male_65_plus_pct || 0) + (center.female_65_plus_pct || 0)
+                                        );
+                                        
+                                        // Return normalized percentage (multiplied by 100)
+                                        return total > 0 ? 
+                                          ((center.male_18_24_pct || 0) + (center.female_18_24_pct || 0)) * 100 / total : 0;
+                                      }),
+                                      backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                                    },
+                                    {
+                                      label: '25-34',
+                                      data: Object.values(clusteringData.cluster_centers || {}).map(center => {
+                                        // Calculate total for normalization
+                                        const total = (
+                                          (center.male_18_24_pct || 0) + (center.female_18_24_pct || 0) +
+                                          (center.male_25_34_pct || 0) + (center.female_25_34_pct || 0) +
+                                          (center.male_35_44_pct || 0) + (center.female_35_44_pct || 0) +
+                                          (center.male_45_64_pct || 0) + (center.female_45_64_pct || 0) +
+                                          (center.male_65_plus_pct || 0) + (center.female_65_plus_pct || 0)
+                                        );
+                                        
+                                        // Return normalized percentage (multiplied by 100)
+                                        return total > 0 ? 
+                                          ((center.male_25_34_pct || 0) + (center.female_25_34_pct || 0)) * 100 / total : 0;
+                                      }),
+                                      backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                                    },
+                                    {
+                                      label: '35-44',
+                                      data: Object.values(clusteringData.cluster_centers || {}).map(center => {
+                                        // Calculate total for normalization
+                                        const total = (
+                                          (center.male_18_24_pct || 0) + (center.female_18_24_pct || 0) +
+                                          (center.male_25_34_pct || 0) + (center.female_25_34_pct || 0) +
+                                          (center.male_35_44_pct || 0) + (center.female_35_44_pct || 0) +
+                                          (center.male_45_64_pct || 0) + (center.female_45_64_pct || 0) +
+                                          (center.male_65_plus_pct || 0) + (center.female_65_plus_pct || 0)
+                                        );
+                                        
+                                        // Return normalized percentage (multiplied by 100)
+                                        return total > 0 ? 
+                                          ((center.male_35_44_pct || 0) + (center.female_35_44_pct || 0)) * 100 / total : 0;
+                                      }),
+                                      backgroundColor: 'rgba(255, 206, 86, 0.7)',
+                                    },
+                                    {
+                                      label: '45-64',
+                                      data: Object.values(clusteringData.cluster_centers || {}).map(center => {
+                                        // Calculate total for normalization
+                                        const total = (
+                                          (center.male_18_24_pct || 0) + (center.female_18_24_pct || 0) +
+                                          (center.male_25_34_pct || 0) + (center.female_25_34_pct || 0) +
+                                          (center.male_35_44_pct || 0) + (center.female_35_44_pct || 0) +
+                                          (center.male_45_64_pct || 0) + (center.female_45_64_pct || 0) +
+                                          (center.male_65_plus_pct || 0) + (center.female_65_plus_pct || 0)
+                                        );
+                                        
+                                        // Return normalized percentage (multiplied by 100)
+                                        return total > 0 ? 
+                                          ((center.male_45_64_pct || 0) + (center.female_45_64_pct || 0)) * 100 / total : 0;
+                                      }),
+                                      backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                                    },
+                                    {
+                                      label: '65+',
+                                      data: Object.values(clusteringData.cluster_centers || {}).map(center => {
+                                        // Calculate total for normalization
+                                        const total = (
+                                          (center.male_18_24_pct || 0) + (center.female_18_24_pct || 0) +
+                                          (center.male_25_34_pct || 0) + (center.female_25_34_pct || 0) +
+                                          (center.male_35_44_pct || 0) + (center.female_35_44_pct || 0) +
+                                          (center.male_45_64_pct || 0) + (center.female_45_64_pct || 0) +
+                                          (center.male_65_plus_pct || 0) + (center.female_65_plus_pct || 0)
+                                        );
+                                        
+                                        // Return normalized percentage (multiplied by 100)
+                                        return total > 0 ? 
+                                          ((center.male_65_plus_pct || 0) + (center.female_65_plus_pct || 0)) * 100 / total : 0;
+                                      }),
+                                      backgroundColor: 'rgba(153, 102, 255, 0.7)',
+                                    }
+                                  ]
+                                }}
+                                options={{
+                                  responsive: true,
+                                  maintainAspectRatio: false,
+                                  scales: {
+                                    x: {
+                                      stacked: true,
+                                    },
+                                    y: {
+                                      stacked: true,
+                                      title: {
+                                        display: true,
+                                        text: 'Percentage (%)'
+                                      },
+                                      max: 100 // Explicitly set maximum to 100%
+                                    }
+                                  },
+                                  plugins: {
+                                    tooltip: {
+                                      callbacks: {
+                                        label: function(context) {
+                                          return `${context.dataset.label}: ${context.raw.toFixed(2)}%`;
+                                        }
+                                      }
+                                    }
+                                  }
+                                }}
+                              />
+                            </div>
+                          </Col>
+                          <Col lg={6} className="mb-4">
+                            <h5 className="text-center">Gender Distribution By Cluster</h5>
+                            <div style={{ height: '400px' }}>
+                              <Bar
+                                data={{
+                                  labels: Array.from({ length: Object.keys(clusteringData.cluster_centers || {}).length }, 
+                                         (_, i) => `Cluster ${i + 1}`),
+                                  datasets: [
+                                    {
+                                      label: 'Male',
+                                      data: Object.values(clusteringData.cluster_centers || {}).map(center => {
+                                        // Calculate total male and female percentages
+                                        const maleTotal = (
+                                          (center.male_18_24_pct || 0) + 
+                                          (center.male_25_34_pct || 0) + 
+                                          (center.male_35_44_pct || 0) + 
+                                          (center.male_45_64_pct || 0) + 
+                                          (center.male_65_plus_pct || 0)
+                                        );
+                                        
+                                        const femaleTotal = (
+                                          (center.female_18_24_pct || 0) + 
+                                          (center.female_25_34_pct || 0) + 
+                                          (center.female_35_44_pct || 0) + 
+                                          (center.female_45_64_pct || 0) + 
+                                          (center.female_65_plus_pct || 0)
+                                        );
+                                        
+                                        const total = maleTotal + femaleTotal;
+                                        
+                                        // Return male percentage normalized to 100%
+                                        return total > 0 ? (maleTotal * 100 / total) : 0;
+                                      }),
+                                      backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                                    },
+                                    {
+                                      label: 'Female',
+                                      data: Object.values(clusteringData.cluster_centers || {}).map(center => {
+                                        // Calculate total male and female percentages
+                                        const maleTotal = (
+                                          (center.male_18_24_pct || 0) + 
+                                          (center.male_25_34_pct || 0) + 
+                                          (center.male_35_44_pct || 0) + 
+                                          (center.male_45_64_pct || 0) + 
+                                          (center.male_65_plus_pct || 0)
+                                        );
+                                        
+                                        const femaleTotal = (
+                                          (center.female_18_24_pct || 0) + 
+                                          (center.female_25_34_pct || 0) + 
+                                          (center.female_35_44_pct || 0) + 
+                                          (center.female_45_64_pct || 0) + 
+                                          (center.female_65_plus_pct || 0)
+                                        );
+                                        
+                                        const total = maleTotal + femaleTotal;
+                                        
+                                        // Return female percentage normalized to 100%
+                                        return total > 0 ? (femaleTotal * 100 / total) : 0;
+                                      }),
+                                      backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                                    }
+                                  ]
+                                }}
+                                options={{
+                                  responsive: true,
+                                  maintainAspectRatio: false,
+                                  scales: {
+                                    y: {
+                                      stacked: true,
+                                      title: {
+                                        display: true,
+                                        text: 'Percentage (%)'
+                                      },
+                                      max: 100 // Explicitly set maximum to 100%
+                                    },
+                                    x: {
+                                      stacked: true
+                                    }
+                                  },
+                                  plugins: {
+                                    tooltip: {
+                                      callbacks: {
+                                        label: function(context) {
+                                          return `${context.dataset.label}: ${context.raw.toFixed(2)}%`;
+                                        }
+                                      }
+                                    }
+                                  }
+                                }}
+                              />
+                            </div>
+                          </Col>
+                        </Row>
                       </Card.Body>
                     </Card>
                   </Col>
@@ -1146,5 +1431,6 @@ function App() {
     </div>
   );
 }
+
 
 export default App;
