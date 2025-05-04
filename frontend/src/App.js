@@ -269,41 +269,145 @@ function App() {
     ],
   };
   
+  // Prepare national age distribution pie chart
+  const nationalAgeDemographicData = {
+    labels: ['18-24', '25-34', '35-44', '45-64', '65+'],
+    datasets: [
+      {
+        data: [
+          demographicData.national.age_18_24 || 0,
+          demographicData.national.age_25_34 || 0,
+          demographicData.national.age_35_44 || 0,
+          demographicData.national.age_45_64 || 0,
+          demographicData.national.age_65_plus || 0,
+        ],
+        backgroundColor: [
+          'rgba(255, 99, 132, 0.7)',
+          'rgba(54, 162, 235, 0.7)',
+          'rgba(255, 206, 86, 0.7)',
+          'rgba(75, 192, 192, 0.7)',
+          'rgba(153, 102, 255, 0.7)',
+        ],
+        borderColor: [
+          'rgba(255, 99, 132, 1)',
+          'rgba(54, 162, 235, 1)',
+          'rgba(255, 206, 86, 1)',
+          'rgba(75, 192, 192, 1)',
+          'rgba(153, 102, 255, 1)',
+        ],
+        borderWidth: 1,
+      },
+    ],
+  };
+  
+  // Prepare filtered and sorted county age data for bar chart
+  const getTopCountiesByAgeGroup = (ageGroup, topN = 10, usePercentages = false) => {
+    // Calculate the values for sorting (either raw numbers or percentages)
+    const countiesWithValues = attendanceData.map(item => {
+      let value = 0;
+      if (ageGroup === 'all') {
+        value = item.votes_cast || 0;
+      } else if (ageGroup === '18-24') {
+        value = item.age_18_24 || 0;
+        if (usePercentages && item.votes_cast > 0) {
+          value = (value / item.votes_cast) * 100;
+        }
+      } else if (ageGroup === '25-34') {
+        value = item.age_25_34 || 0;
+        if (usePercentages && item.votes_cast > 0) {
+          value = (value / item.votes_cast) * 100;
+        }
+      } else if (ageGroup === '35-44') {
+        value = item.age_35_44 || 0;
+        if (usePercentages && item.votes_cast > 0) {
+          value = (value / item.votes_cast) * 100;
+        }
+      } else if (ageGroup === '45-64') {
+        value = item.age_45_64 || 0;
+        if (usePercentages && item.votes_cast > 0) {
+          value = (value / item.votes_cast) * 100;
+        }
+      } else if (ageGroup === '65+') {
+        value = item.age_65_plus || 0;
+        if (usePercentages && item.votes_cast > 0) {
+          value = (value / item.votes_cast) * 100;
+        }
+      }
+      
+      return {
+        county: item.county,
+        value,
+        item, // Keep the full item for accessing other properties
+      };
+    });
+    
+    // Sort by the calculated value and take top N
+    return countiesWithValues
+      .sort((a, b) => b.value - a.value)
+      .slice(0, topN);
+  };
+  
+  // Counties filter state
+  const [ageGroupFilter, setAgeGroupFilter] = useState('all');
+  const [useAgePercentages, setUseAgePercentages] = useState(false);
+  const [topCountiesCount, setTopCountiesCount] = useState(10);
+  
+  // Get top counties based on current filters
+  const topCountiesByAge = useMemo(() => 
+    getTopCountiesByAgeGroup(ageGroupFilter, topCountiesCount, useAgePercentages),
+    [ageGroupFilter, topCountiesCount, useAgePercentages, attendanceData]
+  );
+  
   // Prepare demographic data for age groups
   const ageDemographicData = {
-    labels: attendanceData.map(item => item.county),
+    labels: topCountiesByAge.map(item => item.county),
     datasets: [
       {
         label: '18-24',
-        data: attendanceData.map(item => item.age_18_24 || 0),
+        data: topCountiesByAge.map(item => {
+          const value = item.item.age_18_24 || 0;
+          return useAgePercentages ? ((value / item.item.votes_cast) * 100).toFixed(1) : value;
+        }),
         backgroundColor: 'rgba(255, 99, 132, 0.5)',
         borderColor: 'rgba(255, 99, 132, 1)',
         borderWidth: 1,
       },
       {
         label: '25-34',
-        data: attendanceData.map(item => item.age_25_34 || 0),
+        data: topCountiesByAge.map(item => {
+          const value = item.item.age_25_34 || 0;
+          return useAgePercentages ? ((value / item.item.votes_cast) * 100).toFixed(1) : value;
+        }),
         backgroundColor: 'rgba(54, 162, 235, 0.5)',
         borderColor: 'rgba(54, 162, 235, 1)',
         borderWidth: 1,
       },
       {
         label: '35-44',
-        data: attendanceData.map(item => item.age_35_44 || 0),
+        data: topCountiesByAge.map(item => {
+          const value = item.item.age_35_44 || 0;
+          return useAgePercentages ? ((value / item.item.votes_cast) * 100).toFixed(1) : value;
+        }),
         backgroundColor: 'rgba(255, 206, 86, 0.5)',
         borderColor: 'rgba(255, 206, 86, 1)',
         borderWidth: 1,
       },
       {
         label: '45-64',
-        data: attendanceData.map(item => item.age_45_64 || 0),
+        data: topCountiesByAge.map(item => {
+          const value = item.item.age_45_64 || 0;
+          return useAgePercentages ? ((value / item.item.votes_cast) * 100).toFixed(1) : value;
+        }),
         backgroundColor: 'rgba(75, 192, 192, 0.5)',
         borderColor: 'rgba(75, 192, 192, 1)',
         borderWidth: 1,
       },
       {
         label: '65+',
-        data: attendanceData.map(item => item.age_65_plus || 0),
+        data: topCountiesByAge.map(item => {
+          const value = item.item.age_65_plus || 0;
+          return useAgePercentages ? ((value / item.item.votes_cast) * 100).toFixed(1) : value;
+        }),
         backgroundColor: 'rgba(153, 102, 255, 0.5)',
         borderColor: 'rgba(153, 102, 255, 1)',
         borderWidth: 1,
@@ -706,7 +810,119 @@ function App() {
                     <Card className="mb-4">
                       <Card.Body>
                         <h4>Voter Age Demographics</h4>
-                        <Bar data={ageDemographicData} />
+                        <Row>
+                          {/* National Demographics Pie Chart */}
+                          <Col md={4}>
+                            <h5 className="text-center">National Age Distribution</h5>
+                            <div style={{ height: '300px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                              <Pie 
+                                data={nationalAgeDemographicData} 
+                                options={{
+                                  responsive: true,
+                                  maintainAspectRatio: false,
+                                  plugins: {
+                                    tooltip: {
+                                      callbacks: {
+                                        label: function(context) {
+                                          const value = context.raw;
+                                          const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                          const percentage = ((value / total) * 100).toFixed(1);
+                                          return `${context.label}: ${value.toLocaleString()} (${percentage}%)`;
+                                        }
+                                      }
+                                    }
+                                  }
+                                }}
+                              />
+                            </div>
+                          </Col>
+                          
+                          {/* Top Counties by Age Group */}
+                          <Col md={8}>
+                            <h5 className="text-center">Top Counties by Age Distribution</h5>
+                            <div className="mb-3">
+                              <Row className="align-items-center">
+                                <Col md={3}>
+                                  <Form.Group>
+                                    <Form.Label>Filter by age group:</Form.Label>
+                                    <Form.Select 
+                                      value={ageGroupFilter}
+                                      onChange={(e) => setAgeGroupFilter(e.target.value)}
+                                    >
+                                      <option value="all">All age groups</option>
+                                      <option value="18-24">18-24 years</option>
+                                      <option value="25-34">25-34 years</option>
+                                      <option value="35-44">35-44 years</option>
+                                      <option value="45-64">45-64 years</option>
+                                      <option value="65+">65+ years</option>
+                                    </Form.Select>
+                                  </Form.Group>
+                                </Col>
+                                <Col md={3}>
+                                  <Form.Group>
+                                    <Form.Label>Show top counties:</Form.Label>
+                                    <Form.Select 
+                                      value={topCountiesCount}
+                                      onChange={(e) => setTopCountiesCount(parseInt(e.target.value))}
+                                    >
+                                      <option value="5">Top 5</option>
+                                      <option value="10">Top 10</option>
+                                      <option value="15">Top 15</option>
+                                      <option value="20">Top 20</option>
+                                    </Form.Select>
+                                  </Form.Group>
+                                </Col>
+                                <Col md={3}>
+                                  <Form.Group className="mt-1">
+                                    <Form.Check 
+                                      type="switch"
+                                      id="use-percentages-switch"
+                                      label="Show percentages"
+                                      checked={useAgePercentages}
+                                      onChange={(e) => setUseAgePercentages(e.target.checked)}
+                                    />
+                                  </Form.Group>
+                                </Col>
+                                <Col md={3}>
+                                  <div className="text-muted small">
+                                    {ageGroupFilter === 'all' 
+                                      ? 'Showing counties with highest total votes' 
+                                      : `Showing counties with highest ${ageGroupFilter} ${useAgePercentages ? 'percentage' : 'turnout'}`}
+                                  </div>
+                                </Col>
+                              </Row>
+                            </div>
+                            <div style={{ height: '300px' }}>
+                              <Bar 
+                                data={ageDemographicData} 
+                                options={{
+                                  responsive: true,
+                                  maintainAspectRatio: false,
+                                  plugins: {
+                                    tooltip: {
+                                      callbacks: {
+                                        label: function(context) {
+                                          const value = context.raw;
+                                          return useAgePercentages
+                                            ? `${context.dataset.label}: ${value}%`
+                                            : `${context.dataset.label}: ${Number(value).toLocaleString()}`;
+                                        }
+                                      }
+                                    }
+                                  },
+                                  scales: {
+                                    y: {
+                                      title: {
+                                        display: true,
+                                        text: useAgePercentages ? 'Percentage (%)' : 'Number of Voters'
+                                      }
+                                    }
+                                  }
+                                }}
+                              />
+                            </div>
+                          </Col>
+                        </Row>
                       </Card.Body>
                     </Card>
                   </Col>
