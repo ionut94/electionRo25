@@ -1,41 +1,48 @@
 # Romanian Elections 2025 Visualization
 
-This web application visualizes the election results for the Romanian Elections taking place in 2025. It features a React frontend for data visualization and a Flask backend that processes and serves the election data.
+This web application visualizes the election results for the Romanian Elections taking place in 2025. It features a React frontend for data visualization and a Flask backend that processes and serves the election data. The application provides interactive dashboards with enhanced visualizations for election attendance, demographic analysis, and result tracking.
 
 ## Project Structure
 
 ```
 electionRo25/
-├── backend/                    # Flask backend
-│   ├── app.py                  # Main Flask application
-│   ├── requirements.txt        # Python dependencies
-│   ├── run.sh                  # Script to start the backend
-│   ├── update_data.py          # Data processing and update functionality
-│   ├── force_download.py       # Specialized script for downloading from live source
-│   ├── fetch_live_data_improved.sh  # Shell script for automated data updates
-│   ├── setup_cron_job.sh       # Script to setup automated updates
-│   └── data/                   # Data directory for CSV files
-│       ├── attendance.csv      # Voter attendance data
-│       ├── results.csv         # Election results data
-│       └── presence_now.csv    # Latest downloaded raw data
-└── frontend/                   # React frontend
-    ├── public/                 # Static files
-    └── src/                    # React source code
+├── backend/                # Flask backend
+│   ├── app.py              # Main Flask application
+│   ├── update_data.py      # Data processing utilities
+│   ├── requirements.txt    # Python dependencies
+│   ├── run.sh              # Script to start the backend
+│   └── data/               # Data directory for CSV files
+│       ├── attendance.csv  # Voter attendance data
+│       ├── results.csv     # Election results data
+│       └── Cluster/        # Raw election data for clustering
+└── frontend/               # React frontend
+    ├── public/             # Static files
+    └── src/                # React source code
+        ├── App.js          # Main React component 
+        ├── App.css         # Main stylesheet
+        └── utils/          # Utility functions
+            ├── hooks.js    # Custom React hooks
+            └── similarity.js # Data similarity calculations
 ```
 
 ## Features
 
-- Real-time visualization of election attendance data
-- Demographic breakdowns (age groups, gender, urban/rural)
+- Real-time visualization of election attendance data with automatic updates
+- Comprehensive demographic breakdowns (age groups, gender, urban/rural)
 - Interactive charts displaying election results by county
-- Detailed tabular data for both attendance and results
+- Advanced data visualizations with custom color schemes and responsive layouts
+- Detailed tabular data with sorting and filtering capabilities
+- Data clustering analysis for identifying voting patterns
+- Demographic insights cards with key statistics highlights
 - Manual data refresh with a dedicated refresh button
 - Auto-refreshing data (every 5 minutes)
-- Live data updates from the official election source with multiple fallback methods
-- Urban/Rural distribution estimation when data is missing
-- Robust handling of anti-bot protection on the official data source
-- Automated scheduled updates via cron job
-- Responsive design works on desktop and mobile devices
+- Responsive design that works on desktop, tablet, and mobile devices
+- Modern UI with reusable components:
+  - Dashboard headers with timestamps
+  - Statistics cards with visual indicators
+  - Chart containers with consistent styling
+  - Progress bars for percentage visualization
+  - Enhanced tooltips for detailed data exploration
 
 ## Getting Started
 
@@ -80,7 +87,7 @@ electionRo25/
 
 ## Data Files
 
-The application expects two main data files in the `backend/data` directory:
+The application processes and visualizes data from the following files:
 
 1. **attendance.csv** - Contains voter attendance statistics with the following columns:
    - county: Name of the county
@@ -91,17 +98,22 @@ The application expects two main data files in the `backend/data` directory:
    - female_voters: Number of female voters
    - urban_stations: Number of urban polling stations
    - rural_stations: Number of rural polling stations
-   - age_18_24: Number of voters aged 18-24
-   - age_25_34: Number of voters aged 25-34
-   - age_35_44: Number of voters aged 35-44
-   - age_45_64: Number of voters aged 45-64
-   - age_65_plus: Number of voters aged 65 and older
+   - urban_votes: Number of votes from urban areas
+   - rural_votes: Number of votes from rural areas
+   - urban_male_voters: Number of male voters from urban areas
+   - urban_female_voters: Number of female voters from urban areas
+   - rural_male_voters: Number of male voters from rural areas
+   - rural_female_voters: Number of female voters from rural areas
+   - age_18_24, age_25_34, age_35_44, age_45_64, age_65_plus: Number of voters by age group
+   - urban_age_* and rural_age_*: Age group breakdowns by urban/rural areas
    - timestamp: Date and time of the data point
 
 2. **results.csv** - Contains election results with the following columns:
    - county: Name of the county
    - candidate_1 through candidate_5: Percentage of votes for each candidate
    - timestamp: Date and time of the data point
+
+3. **Raw presence data** - The backend can process detailed polling station data from CSV files with information about each voting station, including demographic breakdowns by age and gender.
 
 ## API Endpoints
 
@@ -123,55 +135,70 @@ The backend server provides the following API endpoints:
    }
    ```
 
+3. **/demographic** - Returns demographic breakdown data:
+   ```json
+   {
+     "national": {national demographic totals and percentages},
+     "counties": [county-level demographic data],
+     "last_update": "timestamp of last update",
+     "has_urban_rural_data": true/false
+   }
+   ```
+
+4. **/clustering** - Returns clustering data based on demographic patterns:
+   ```json
+   {
+     "cluster_level": "county|town|polling",
+     "n_clusters": number of clusters,
+     "cluster_centers": {cluster centers data},
+     "clustered_data": [array of data points with cluster assignments]
+   }
+   ```
+
+5. **/data/last_update** - Returns the timestamp of the last data update
+
+6. **/trigger/update** - Endpoint to manually trigger data processing (POST)
+
 ## Updating Data
 
-The application offers multiple methods for updating election data:
+To update the election data, you can:
 
-1. **Manual Data Refresh**: Click the "Refresh Data" button in the UI to load the latest data from the backend.
+1. **Replace CSV Files**: Modify or replace the CSV files in the `backend/data` directory. The application will automatically detect and display the updated information on the next refresh.
 
-2. **Auto-Refresh**: The application automatically refreshes data every 5 minutes while running.
+2. **Use API Endpoint**: Send a POST request to the `/trigger/update` endpoint to trigger the data processing pipeline, which will automatically update all visualizations.
 
-3. **Live Data Source Updates**: 
-   - Click the "Update from Live Source" button in the UI to download and process the latest data directly from the official source.
-   - Use the command line tool to download and update data:
-     ```
-     cd backend
-     ./fetch_live_data.sh
-     ```
-   - For continuous updates, specify an interval (in seconds):
-     ```
-     ./fetch_live_data.sh --interval 3600  # Update every hour
-     ```
-   - API Key Configuration:
-     - The backend requires an API key for the update endpoint
-     - Set the key in the frontend `.env` file:
-       ```
-       REACT_APP_UPDATE_API_KEY=your-secure-api-key
-       ```
-     - Or set an environment variable on the server:
-       ```
-       export UPDATE_API_KEY=your-secure-api-key
-       ```
-     - The default key is 'your-secure-api-key' if not specified
+3. **Run Update Script**: Execute the data processing utilities directly:
+   ```
+   cd backend
+   python update_data.py
+   ```
 
-4. **Automated Scheduled Updates**:
-   - Set up a cron job to automatically update data at regular intervals:
-     ```
-     cd backend
-     ./setup_cron_job.sh
-     ```
-   - This will create a cron job to update data hourly. You can modify the script to change the frequency.
+## Urban/Rural Data Visualization
 
-5. **Manual File Update**: Simply replace or modify the CSV files in the `backend/data` directory. The application will detect and display the updated information on the next refresh.
+The application provides detailed urban/rural voter analysis through:
 
-## Live Data Source
+- Urban/Rural Distribution Chart - Shows the split of voters between urban and rural areas
+- Urban/Rural Gender Distribution - Displays gender breakdown in both urban and rural settings
+- Urban/Rural Age Distribution - Shows age group comparison between urban and rural voters
+- Urban/Rural Insights Card - Provides key metrics and observations about urban/rural voting patterns
 
-The application can download data from the official election source:
+## Deployment
+
+For production deployment, we recommend using Docker containers:
+
 ```
-https://prezenta.roaep.ro/prezidentiale04052025//data/csv/simpv/presence_now.csv
+# Build the frontend
+cd frontend
+npm run build
+
+# Create a single container with both front and backend
+docker build -t election-ro25-app .
+docker run -p 80:80 election-ro25-app
 ```
 
-This data is processed and converted to the format expected by the application.
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
