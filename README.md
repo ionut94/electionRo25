@@ -6,16 +6,21 @@ This web application visualizes the election results for the Romanian Elections 
 
 ```
 electionRo25/
-├── backend/                # Flask backend
-│   ├── app.py              # Main Flask application
-│   ├── requirements.txt    # Python dependencies
-│   ├── run.sh              # Script to start the backend
-│   └── data/               # Data directory for CSV files
-│       ├── attendance.csv  # Voter attendance data
-│       └── results.csv     # Election results data
-└── frontend/               # React frontend
-    ├── public/             # Static files
-    └── src/                # React source code
+├── backend/                    # Flask backend
+│   ├── app.py                  # Main Flask application
+│   ├── requirements.txt        # Python dependencies
+│   ├── run.sh                  # Script to start the backend
+│   ├── update_data.py          # Data processing and update functionality
+│   ├── force_download.py       # Specialized script for downloading from live source
+│   ├── fetch_live_data_improved.sh  # Shell script for automated data updates
+│   ├── setup_cron_job.sh       # Script to setup automated updates
+│   └── data/                   # Data directory for CSV files
+│       ├── attendance.csv      # Voter attendance data
+│       ├── results.csv         # Election results data
+│       └── presence_now.csv    # Latest downloaded raw data
+└── frontend/                   # React frontend
+    ├── public/                 # Static files
+    └── src/                    # React source code
 ```
 
 ## Features
@@ -26,6 +31,10 @@ electionRo25/
 - Detailed tabular data for both attendance and results
 - Manual data refresh with a dedicated refresh button
 - Auto-refreshing data (every 5 minutes)
+- Live data updates from the official election source with multiple fallback methods
+- Urban/Rural distribution estimation when data is missing
+- Robust handling of anti-bot protection on the official data source
+- Automated scheduled updates via cron job
 - Responsive design works on desktop and mobile devices
 
 ## Getting Started
@@ -116,7 +125,53 @@ The backend server provides the following API endpoints:
 
 ## Updating Data
 
-To update the election data, simply replace or modify the CSV files in the `backend/data` directory. The application will automatically detect and display the updated information on the next refresh.
+The application offers multiple methods for updating election data:
+
+1. **Manual Data Refresh**: Click the "Refresh Data" button in the UI to load the latest data from the backend.
+
+2. **Auto-Refresh**: The application automatically refreshes data every 5 minutes while running.
+
+3. **Live Data Source Updates**: 
+   - Click the "Update from Live Source" button in the UI to download and process the latest data directly from the official source.
+   - Use the command line tool to download and update data:
+     ```
+     cd backend
+     ./fetch_live_data.sh
+     ```
+   - For continuous updates, specify an interval (in seconds):
+     ```
+     ./fetch_live_data.sh --interval 3600  # Update every hour
+     ```
+   - API Key Configuration:
+     - The backend requires an API key for the update endpoint
+     - Set the key in the frontend `.env` file:
+       ```
+       REACT_APP_UPDATE_API_KEY=your-secure-api-key
+       ```
+     - Or set an environment variable on the server:
+       ```
+       export UPDATE_API_KEY=your-secure-api-key
+       ```
+     - The default key is 'your-secure-api-key' if not specified
+
+4. **Automated Scheduled Updates**:
+   - Set up a cron job to automatically update data at regular intervals:
+     ```
+     cd backend
+     ./setup_cron_job.sh
+     ```
+   - This will create a cron job to update data hourly. You can modify the script to change the frequency.
+
+5. **Manual File Update**: Simply replace or modify the CSV files in the `backend/data` directory. The application will detect and display the updated information on the next refresh.
+
+## Live Data Source
+
+The application can download data from the official election source:
+```
+https://prezenta.roaep.ro/prezidentiale04052025//data/csv/simpv/presence_now.csv
+```
+
+This data is processed and converted to the format expected by the application.
 
 ## License
 
